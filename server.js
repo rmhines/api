@@ -1,123 +1,244 @@
 // BASE SETUP
 // =============================================================================
 
-// call the packages we need
-var express    	= require('express');        // call express
-var app        	= express();                 // define our app using express
+// Call the needed packages
+var express    	= require('express');        // Call express
+var app        	= express();                 // Define the app using express
 var bodyParser 	= require('body-parser');
 
-// establish database connection
+// Establish database connection
 var mongoose   	= require('mongoose');
 mongoose.connect('mongodb://localhost/api');
 
-// import data model
-var Bear 		= require('./app/models/bear');
+// Import data models
+var Spot 		= require('./app/models/spot');
+var User 		= require('./app/models/user');
+var Comment 	= require('./app/models/comment');
 
-// configure app to use bodyParser()
-// this will let us get the data from a POST
+// Configure app to use bodyParser()
+// This will let me get the data from a POST
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-var port = process.env.PORT || 8080;        // set our port
+var port = process.env.PORT || 8080;        // Set the port
 
 // ROUTES FOR OUR API
 // =============================================================================
-var router = express.Router();              // get an instance of the express Router
+var router = express.Router();              // Get an instance of the express Router
 
-// middleware to use for all requests
-// this can be used for validation, logging, authentication, analytics. 
-// All important stuff
+// Middleware to use for all requests
 router.use(function(req, res, next) {
-    // do logging
-    console.log('Something is happening.');
-    next(); // make sure we go to the next routes and don't stop here
+    // Do logging
+    console.log(req.method, req.url, req.body);
+    next(); // Make sure it goes to the next routes and doesn't stop here
 });
 
-// test route to make sure everything is working (accessed at GET http://localhost:8080/api)
+// Test route to make sure everything is working (accessed at GET http://localhost:8080/api)
 router.get('/', function(req, res) {
-    res.json({ message: 'hooray! welcome to our api!' });   
+    res.json({ message: 'Welcome to the HappyHourScour (working title!) API.' });   
 });
 
-// all routes that end in /bears
+// All routes that end in /spots
 // -----------------------------------------------------------------------------
-router.route('/bears')
+router.route('/spots')
 
-    // create a bear (accessed at POST http://localhost:8080/api/bears)
+    // Create a spot (accessed at POST http://localhost:8080/api/spots)
     .post(function(req, res) {
         
-        var bear = new Bear();      // create a new instance of the Bear model
-        bear.name = req.body.name;  // set the bears name (comes from the request)
+        var spot = new Spot(req.body);      // Create a new instance of the Spot model
 
-        // save the bear and check for errors
-        bear.save(function(err) {
+        // Save the spot and check for errors
+        spot.save(function(err) {
             if (err)
                 res.send(err);
 
-            res.json({ message: 'Bear created!' });
+            res.json({ message: 'Spot created!' });
         });        
     })
 
-    // get all the bears (accessed at GET http://localhost:8080/api/bears)
+    // Get all the spots (accessed at GET http://localhost:8080/api/spots)
     .get(function(req, res) {
-    	Bear.find(function(err, bears) {
+    	Spot.find(function(err, spots) {
     		if (err)
     			res.send(err);
 
-    		res.json(bears);
+    		res.json(spots);
     	});
+    }
+);
+
+// Route for preloading spot objects
+// Use Express's param() function to automatically load objects
+router.param('spot_id', function(req, res, next, id) {
+    var query = Spot.findById(id);
+
+    // Use mongoose's query interface to interact with database
+    query.exec(function (err, spot) {
+        if (err) {
+            return next(err);
+        }
+        if (!spot) {
+            return next(new Error('Unable to locate spot.'));
+        }
+
+        req.spot = spot;
+        return next();
     });
+});
 
-// all routes that end in /bears/:bear_id
+// All routes that end in /spots/:spot_id
 // ------------------------------------------------------------------------------
-router.route('/bears/:bear_id')
+router.route('/spots/:spot_id')
 
-	// get the bear with that id (accessed at GET http://localhost:8080/api/bears/:bear_id)
-	.get(function(req, res) {
-		Bear.findById(req.params.bear_id, function(err, bear) {
-			if (err)
-				res.send(err);
+	// // Get the spot with that id (accessed at GET http://localhost:8080/api/spots/:spot_id)
+	// .get(function(req, res) {
+	// 	Spot.findById(req.params.spot_id, function(err, spot) {
+	// 		if (err)
+	// 			res.send(err);
 
-			res.json(bear);
-		});
-	})
+	// 		res.json(spot);
+	// 	});
+	// })
 
-	// update the bear with this id (accessed at GET http://localhost:8080/api/bears/:bear_id)
-    .put(function(req, res) {
+    // Get a spot (should already be in response body from .param middleware)
+    // Attach all associated comments to the spot
+    .get(function(req, res) {
+        // Use populate function to retreive comments along with posts
+        req.spot.populate('comments', function(err, spot) {
+            if (err) {
+                return next(err);
+            }
 
-    	// use our bear model to find the bear we want
-    	Bear.findById(req.params.bear_id, function(err, bear) {
-    		if (err)
-    			res.send(err);
-
-    		bear.name = req.body.name; // update the bear's info
-
-    		//save the bear
-    		bear.save(function(err) {
-    			if (err)
-    				res.send(err);
-
-    			res.json({ message: 'Bear updated!' });
-    		});
-    	});
+            res.json(spot);
+        });
     })
 
-    // delete the bear with this id (accessed at DELETE http://localhost:8080/api/bears/:bear_id)
+    // Update the spot with this id (accessed at GET http://localhost:8080/api/spots/:spot_id)
+    .put(function(req, res, next) {
+        var id = req.params.spot_id, body = req.body;
+        Spot.findById(id, function(error, spot) {
+            // Handle the error using the Express error middleware
+            if (error) return next(error);
+
+            // Render an error if not found
+            if (!spot) {
+                return res.status(404).json({
+                    message: 'Spot with id ' + id + ' cannot be found.'
+                });
+            }
+
+            // Update the spot model
+            spot.update(body, function(error, spot) {
+                if (error) return next(error);
+                res.json({ message: 'Spot successfully updated!' });
+            });
+        });
+    })
+
+    // Delete the spot with this id (accessed at DELETE http://localhost:8080/api/spots/:spot_id)
     .delete(function(req, res) {
-    	Bear.remove({
-    		_id: req.params.bear_id
-    	}, function(err, bear) {
+    	Spot.remove({
+    		_id: req.params.spot_id
+    	}, function(err, spot) {
     		if (err)
     			res.send(err);
 
-    		res.json({ message: 'Successfully deleted' });
+    		res.json({ message: 'Spot successfully deleted!' });
     	});
-    });
+    }
+);
 
-// REGISTER OUR ROUTES -------------------------------
-// all of our routes will be prefixed with /api
+// All routes that end in /users
+// -----------------------------------------------------------------------------
+router.route('/users')
+
+    // Create a user (accessed at POST http://localhost:8080/api/users)
+    .post(function(req, res) {
+        
+        var user = new User(req.body);      // Create a new instance of the User model
+
+        // Save the user and check for errors
+        user.save(function(err) {
+            if (err)
+                res.send(err);
+
+            res.json({ message: 'User created!' });
+        });        
+    })
+
+    // Get all the users (accessed at GET http://localhost:8080/api/users)
+    // DEBUG only
+    .get(function(req, res) {
+        User.find(function(err, users) {
+            if (err)
+                res.send(err);
+
+            res.json(users);
+        });
+    }
+);
+
+// All routes that end in /users/:user_id
+// ------------------------------------------------------------------------------
+router.route('/users/:user_id')
+
+    // Get the user with that id (accessed at GET http://localhost:8080/api/users/:user_id)
+    .get(function(req, res) {
+        User.findById(req.params.spot_id, function(err, user) {
+            if (err)
+                res.send(err);
+
+            res.json(user);
+        });
+    })
+
+    // Update the user with this id (accessed at GET http://localhost:8080/api/users/:user_id)
+    .put(function(req, res, next) {
+        var id = req.params.user_id, body = req.body;
+        User.findById(id, function(error, user) {
+            // Handle the error using the Express error middleware
+            if (error) return next(error);
+
+            // Render an error if not found
+            if (!user) {
+                return res.status(404).json({
+                    message: 'User with id ' + id + ' cannot be found.'
+                });
+            }
+
+            // Update the user model
+            user.update(body, function(error, user) {
+                if (error) return next(error);
+                res.json({ message: 'User successfully updated!' });
+            });
+        });
+    })
+
+    // Delete the user with this id (accessed at DELETE http://localhost:8080/api/users/:user_id)
+    .delete(function(req, res) {
+        User.remove({
+            _id: req.params.user_id
+        }, function(err, user) {
+            if (err)
+                res.send(err);
+
+            res.json({ message: 'User successfully deleted!' });
+        });
+    }
+);
+
+// All routes that end in /comments
+// -----------------------------------------------------------------------------
+// router.route('/comments')
+
+    
+// );
+
+// REGISTER ALL ROUTES -------------------------------
+// All routes will be prefixed with /api
 app.use('/api', router);
 
 // START THE SERVER
 // =============================================================================
 app.listen(port);
-console.log('Magic happens on port ' + port);
+console.log('Now listening on port ' + port);
