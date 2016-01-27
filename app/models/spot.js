@@ -23,19 +23,21 @@ var SpotSchema = new Schema({
 });
 
 // Increments the number of visits (reviews) for this spot
-SpotSchema.methods.addVisit = function(p) {
+SpotSchema.methods.addVisit = function(spot) {
     this.visited += 1;
-    this.save(p);
+    this.save(spot);
 };
 
-// Updates the average star rating with a new rating
-SpotSchema.methods.updateStars = function(p) {
-    this.avgStars = (this.avgStars * (this.visited - 1) + p) / this.visited;
-};
+// // Updates the average star rating with a new rating
+// SpotSchema.methods.updateStars = function(spot, newRating) {
+//     this.avgStars = (this.avgStars * (this.visited - 1) + newRating) / this.visited;
+//     this.save(spot);
+// };
 
-// Updates the average star rating with a new rating
-SpotSchema.methods.updateDollarSigns = function(p) {
-    this.dollarSigns = (this.dollarSigns * (this.visited - 1) + p) / this.visited;
-};
+// // Updates the average star rating with a new rating
+// SpotSchema.methods.updateDollarSigns = function(spot, newDollarSign) {
+//     this.dollarSigns = (this.dollarSigns * (this.visited - 1) + newDollarSign) / this.visited;
+//     this.save(spot);
+// };
 
 module.exports = mongoose.model('Spot', SpotSchema)

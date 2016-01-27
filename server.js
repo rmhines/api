@@ -86,19 +86,29 @@ router.param('spot_id', function(req, res, next, id) {
     });
 });
 
+// Route for preloading comment objects
+// Use Express's param() function to automatically load objects
+// Gets the comment details from the Comment model and attaches it to the request object
+router.param('comment', function(req, res, next, id) {
+    var query = Comment.findById(id);
+
+    // Use mongoose's query interface to interact with database
+    query.exec(function (err, comment) {
+        if (err) {
+            return next(err);
+        }
+        if (!comment) {
+            return next(new Error('Unable to locate comment.'));
+        }
+
+        req.comment = comment;
+        return next();
+    });
+});
+
 // All routes that end in /spots/:spot_id
 // ------------------------------------------------------------------------------
 router.route('/spots/:spot_id')
-
-	// // Get the spot with that id (accessed at GET http://localhost:8080/api/spots/:spot_id)
-	// .get(function(req, res) {
-	// 	Spot.findById(req.params.spot_id, function(err, spot) {
-	// 		if (err)
-	// 			res.send(err);
-
-	// 		res.json(spot);
-	// 	});
-	// })
 
     // Get a spot (should already be in response body from .param middleware)
     // Attach all associated comments to the spot
@@ -147,6 +157,17 @@ router.route('/spots/:spot_id')
     	});
     }
 );
+
+// PUT route for upvoting a spot
+router.put('/spot/:spot_id/addVisit', function(req, res, next) {
+    req.spot.addVisit(function(err, spot){
+        if (err) {
+            return next(err);
+        }
+
+        res.json(spot);
+    });
+});
 
 // All routes that end in /users
 // -----------------------------------------------------------------------------
@@ -227,12 +248,38 @@ router.route('/users/:user_id')
     }
 );
 
-// All routes that end in /comments
-// -----------------------------------------------------------------------------
-// router.route('/comments')
+// POST route for commenting -- sets author of comment
+router.post('/spots/:spot_id/comments', function(req, res, next) {
+    var comment = new Comment(req.body);
+    comment.spot = req.spot;
+    comment.author = req.payload.username;
 
-    
-// );
+    comment.save(function(err, comment){
+        if(err){
+            return next(err);
+        }
+
+        req.spot.comments.push(comment);
+        req.spot.save(function(err, spot) {
+            if(err){
+                return next(err);
+            }
+
+            res.json(comment);
+        });
+    });
+});
+
+// PUT route for upvoting a comment
+router.put('/spots/:spot_id/comments/:comment/upvote', function(req, res, next) {
+    req.comment.upvote(function(err, comment){
+        if (err) {
+            return next(err);
+        }
+
+        res.json(comment);
+    });
+});
 
 // REGISTER ALL ROUTES -------------------------------
 // All routes will be prefixed with /api
