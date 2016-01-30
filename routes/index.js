@@ -43,6 +43,18 @@ router.post('/spots', auth, function(req, res, next) {
   	});
 });
 
+// DELETE route for deleting spots
+router.delete('/spots/:spot', function(req, res) {
+    Spot.remove({
+        _id: req.params.spot
+    }, function(err, spot) {
+        if (err)
+            res.send(err);
+
+        res.json({ message: 'Spot successfully deleted!' });
+    });
+});
+
 // Route for preloading spot objects
 // Use Express's param() function to automatically load objects
 router.param('spot', function(req, res, next, id) {
@@ -147,6 +159,28 @@ router.post('/spots/:spot/comments', auth, function(req, res, next) {
 	      	res.json(comment);
 	    });
   	});
+});
+
+// DELETE route for deleting a comment
+router.post('/spots/:spot/comments', auth, function(req, res, next) {
+    var comment = new Comment(req.body);
+    comment.spot = req.spot;
+    comment.author = req.payload.username;
+
+    comment.save(function(err, comment){
+      if(err){
+        return next(err);
+      }
+
+      req.spot.comments.push(comment);
+      req.spot.save(function(err, spot) {
+          if(err){
+            return next(err);
+          }
+
+          res.json(comment);
+      });
+    });
 });
 
 // POST route for creating a user given a username and password
