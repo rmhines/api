@@ -108,7 +108,7 @@ router.get('/spots/:spot', function(req, res) {
 
 // PUT route for adding a visit to a spot
 router.put('/spots/:spot/addVisit', auth, function(req, res, next) {
-  	req.spot.addVisit(function(err, spot){
+  	req.spot.addVisit(function(err, spot) {
     	if (err) {
     		return next(err);
     	}
@@ -119,7 +119,7 @@ router.put('/spots/:spot/addVisit', auth, function(req, res, next) {
 
 // PUT route for upvoting a comment
 router.put('/spots/:spot/comments/:comment/upvote', auth, function(req, res, next) {
-  	req.comment.upvote(function(err, comment){
+  	req.comment.upvote(function(err, comment) {
     	if (err) {
     		return next(err);
     	}
@@ -130,7 +130,7 @@ router.put('/spots/:spot/comments/:comment/upvote', auth, function(req, res, nex
 
 // PUT route for downvoting a comment
 router.put('/spots/:spot/comments/:comment/downvote', auth, function(req, res, next) {
-  	req.comment.downvote(function(err, comment){
+  	req.comment.downvote(function(err, comment) {
     	if (err) {
     		return next(err);
     	}

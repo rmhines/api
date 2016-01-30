@@ -22,7 +22,7 @@ var SpotSchema = new mongoose.Schema({
 });
 
 SpotSchema.methods.addVisit = function(spot) {
-  	this.visited += 1;
+  	this.metrics.visited += 1;
   	this.save(spot);
 };
 
