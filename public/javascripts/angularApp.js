@@ -83,7 +83,7 @@ app.controller(
   				$scope.link = '';
 			};
 
-			$scope.incrementVisits = function(spot) {
+			$scope.addVisit = function(spot) {
   				spots.addVisit(spot);
 			};
 
