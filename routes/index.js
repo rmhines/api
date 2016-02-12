@@ -1,5 +1,4 @@
 var express = require('express');
-var cors = require('cors');
 var passport = require('passport');
 var jwt = require('express-jwt');
 var mongoose = require('mongoose');
