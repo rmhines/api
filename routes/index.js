@@ -1,15 +1,11 @@
 var express = require('express');
-var passport = require('passport');
-var jwt = require('express-jwt');
 var mongoose = require('mongoose');
 var router = express.Router();
-var auth = jwt({secret: 'SECRET', userProperty: 'payload'});
 
 module.exports = router;
 
 var Spot = mongoose.model('Spot');
 var Comment = mongoose.model('Comment');
-var User = mongoose.model('User');
 
 // GET route for home page
 router.get('/', function(req, res, next) {
@@ -30,9 +26,8 @@ router.get('/spots', function(req, res, next) {
 });
 
 // POST route for creating spots
-router.post('/spots', auth, function(req, res, next) {
+router.post('/spots', function(req, res, next) {
   	var spot = new Spot(req.body);
-  	spot.author = req.payload.username;
 
   	spot.save(function(err, spot){
     	if(err) {
@@ -107,7 +102,7 @@ router.get('/spots/:spot', function(req, res) {
 });
 
 // PUT route for adding a visit to a spot
-router.put('/spots/:spot/addVisit', auth, function(req, res, next) {
+router.put('/spots/:spot/addVisit', function(req, res, next) {
   	req.spot.addVisit(function(err, spot) {
     	if (err) {
     		return next(err);
@@ -118,7 +113,7 @@ router.put('/spots/:spot/addVisit', auth, function(req, res, next) {
 });
 
 // PUT route for upvoting a comment
-router.put('/spots/:spot/comments/:comment/upvote', auth, function(req, res, next) {
+router.put('/spots/:spot/comments/:comment/upvote', function(req, res, next) {
   	req.comment.upvote(function(err, comment) {
     	if (err) {
     		return next(err);
@@ -129,7 +124,7 @@ router.put('/spots/:spot/comments/:comment/upvote', auth, function(req, res, nex
 });
 
 // PUT route for downvoting a comment
-router.put('/spots/:spot/comments/:comment/downvote', auth, function(req, res, next) {
+router.put('/spots/:spot/comments/:comment/downvote', function(req, res, next) {
   	req.comment.downvote(function(err, comment) {
     	if (err) {
     		return next(err);
@@ -139,11 +134,10 @@ router.put('/spots/:spot/comments/:comment/downvote', auth, function(req, res, n
   	});
 });
 
-// POST route for commenting -- sets author of comment
-router.post('/spots/:spot/comments', auth, function(req, res, next) {
+// POST route for commenting
+router.post('/spots/:spot/comments', function(req, res, next) {
   	var comment = new Comment(req.body);
   	comment.spot = req.spot;
-  	comment.author = req.payload.username;
 
   	comment.save(function(err, comment){
     	if(err){
@@ -162,10 +156,9 @@ router.post('/spots/:spot/comments', auth, function(req, res, next) {
 });
 
 // DELETE route for deleting a comment
-router.post('/spots/:spot/comments', auth, function(req, res, next) {
+router.post('/spots/:spot/comments', function(req, res, next) {
     var comment = new Comment(req.body);
     comment.spot = req.spot;
-    comment.author = req.payload.username;
 
     comment.save(function(err, comment){
       if(err){
@@ -181,46 +174,6 @@ router.post('/spots/:spot/comments', auth, function(req, res, next) {
           res.json(comment);
       });
     });
-});
-
-// POST route for creating a user given a username and password
-router.post('/register', function(req, res, next) {
-  	if(!req.body.username || !req.body.password) {
-    	return res.status(400).json({message: 'Please fill out all fields.'});
-  	}
-
-  	var user = new User();
-
-  	user.username = req.body.username;
-
-  	user.setPassword(req.body.password)
-
-  	user.save(function (err) {
-    	if(err) {
-    		return next(err);
-    	}
-
-    	return res.json({token: user.generateJWT()})
-  	});
-});
-
-// POST route for authenticating the user and returning a token
-router.post('/login', function(req, res, next) {
-  	if(!req.body.username || !req.body.password) {
-    	return res.status(400).json({message: 'Please fill out all fields.'});
-  	}
-
-  	passport.authenticate('local', function(err, user, info) {
-    	if(err) {
-    		return next(err);
-    	}
-
-    	if(user) {
-      		return res.json({token: user.generateJWT()});
-    	} else {
-      		return res.status(401).json(info);
-    	}
-  	})(req, res, next);
 });
 
 // Use Express's param() function to automatically load object

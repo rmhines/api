@@ -31,24 +31,6 @@ app.config([
     				}
     			]
   			}
-		}).state('login', {
-  			url: '/login',
-  			templateUrl: '/login.html',
-  			controller: 'AuthCtrl',
-  			onEnter: ['$state', 'auth', function($state, auth) {
-    			if (auth.isLoggedIn()) {
-      				$state.go('home');
-    			}
-  			}]
-		}).state('register', {
-  			url: '/register',
-  			templateUrl: '/register.html',
-  			controller: 'AuthCtrl',
-  			onEnter: ['$state', 'auth', function($state, auth) {
-    			if (auth.isLoggedIn()) {
-      				$state.go('home');
-    			}
-  			}]
 		});
 
   		// For unkown states reroute to home
@@ -61,10 +43,8 @@ app.controller(
 	[
 		'$scope',
 		'spots',
-		'auth',
-		function($scope, spots, auth) {
+		function($scope, spots) {
   			$scope.spots = spots.spots;
-  			$scope.isLoggedIn = auth.isLoggedIn;
 
 			$scope.addSpot = function() {
   				if(!$scope.title || $scope.title === '') {
@@ -97,10 +77,8 @@ app.controller(
 		'$scope',
 		'spots',
 		'spot',
-		'auth',
-		function($scope, spots, spot, auth) {
+		function($scope, spots, spot) {
 			$scope.spot = spot;
-			$scope.isLoggedIn = auth.isLoggedIn;;
 
 			$scope.addComment = function() {
   				if($scope.body === '') {
@@ -108,7 +86,6 @@ app.controller(
   				}
   				spots.addComment(spot._id, {
     				body: $scope.body,
-    				author: 'user',
   				}).success(function(comment) {
     				$scope.spot.comments.push(comment);
   				});
@@ -126,110 +103,10 @@ app.controller(
 	]
 );
 
-// Authentication controller
-app.controller('AuthCtrl', [
-	'$scope',
-	'$state',
-	'auth',
-	function($scope, $state, auth) {
-  		$scope.user = {};
-
-  		$scope.register = function() {
-    		auth.register($scope.user).error(function(error){
-          		$scope.error = error;
-        	}).then(function() {
-          		$state.go('home');
-        	});
-      	};
-
-      	$scope.logIn = function() {
-        	auth.logIn($scope.user).error(function(error) {
-          		$scope.error = error;
-        	}).then(function() {
-          		$state.go('home');
-        	});
-      	};
-    }
-]);
-
-// Simple navbar controller that exposes isLoggedIn, currentUser,
-// and logOut methods from the auth factory
-app.controller(
-	'NavCtrl', [
-	'$scope',
-	'auth',
-	function($scope, auth) {
-  		$scope.isLoggedIn = auth.isLoggedIn;
-  		$scope.currentUser = auth.currentUser;
-  		$scope.logOut = auth.logOut;
-	}
-]);
-
-// Auth factory service
-app.factory('auth', ['$http', '$window', function($http, $window) {
-   	var auth = {};
-
-   	// Setter for user token
-	auth.saveToken = function (token) {
-	  	$window.localStorage['mean-news-token'] = token;
-	};
-
-	// Getter for user token
-	auth.getToken = function () {
-	  	return $window.localStorage['mean-news-token'];
-	};
-
-	// Return true if user is logged in
-	auth.isLoggedIn = function() {
-	  	var token = auth.getToken();
-
-	  	if(token) {
-	    	var payload = JSON.parse($window.atob(token.split('.')[1]));
-
-	    	return payload.exp > Date.now() / 1000;
-	  	} else {
-	    	return false;
-	  	}
-	};
-
-	// Returns the username of the currently logged in user
-	auth.currentUser = function(){
-	  	if(auth.isLoggedIn()) {
-	    	var token = auth.getToken();
-	    	var payload = JSON.parse($window.atob(token.split('.')[1]));
-
-	    	return payload.username;
-	  	}
-	};
-
-	// Posts a user to the /register route and saves the returned token
-	auth.register = function(user) {
-	  	return $http.post('/register', user).success(function(data) {
-	    	auth.saveToken(data.token);
-	  	});
-	};
-
-	// Posts a user to the /login route and saves the returned token
-	auth.logIn = function(user) {
-	  	return $http.post('/login', user).success(function(data){
-	    	auth.saveToken(data.token);
-	  	});
-	};
-
-	// Log out function that removes the user token from local storage,
-	// effectively logging the user out
-	auth.logOut = function() {
-	  	$window.localStorage.removeItem('mean-news-token');
-	};
-
-  	return auth;
-}]);
-
 // Uses the Angular $http service to query the spots route
 app.factory('spots', [
 	'$http',
-	'auth',
-	function($http, auth) {
+	function($http) {
   		var service = {
 	    	spots: []
 		};
@@ -245,22 +122,15 @@ app.factory('spots', [
 
         // Create new spot
         service.create = function(spot) {
-            return $http.spot('/spots', spot, {
-            	headers: {
-            		Authorization: 'Bearer ' + auth.getToken()
-            	}
-            }).success(function(data) {
+            return $http.post('/spots', spot)
+			.success(function(data) {
                 service.spot.push(data);
             });
         };
 
         // Increment a spot's visit count
         service.addVisit = function(spot) {
-            return $http.put('/spots/' + spot._id + '/addVisit', null, {
-            	headers: {
-            		Authorization: 'Bearer ' + auth.getToken()
-            	}
-            })
+            return $http.put('/spots/' + spot._id + '/addVisit', null)
         	.success(function(data) {
                 spot.visits += 1;
             });
@@ -275,20 +145,12 @@ app.factory('spots', [
 
         // Add a comment to a spot
         service.addComment = function(id, comment) {
-        	return $http.post('/spots/' + id + '/comments', comment, {
-        		headers: {
-        			Authorization: 'Bearer ' + auth.getToken()
-        		}
-        	});
+        	return $http.post('/spots/' + id + '/comments', comment);
         };
 
         // Upvote a comment attached to a specific spot
         service.upvoteComment = function(spot, comment) {
-  			return $http.put('/spots/' + spot._id + '/comments/'+ comment._id + '/upvote', null, {
-  				headers: {
-  					Authorization: 'Bearer ' + auth.getToken()
-  				}
-  			})
+  			return $http.put('/spots/' + spot._id + '/comments/'+ comment._id + '/upvote', null)
     		.success(function(data){
       			comment.upvotes += 1;
     		});
@@ -296,11 +158,7 @@ app.factory('spots', [
 
 		// Downvote a comment attached to a specific spot
         service.downvoteComment = function(spot, comment) {
-  			return $http.put('/spots/' + spot._id + '/comments/'+ comment._id + '/downvote', null, {
-  				headers: {
-  					Authorization: 'Bearer ' + auth.getToken()
-  				}
-  			})
+  			return $http.put('/spots/' + spot._id + '/comments/'+ comment._id + '/downvote', null)
     		.success(function(data){
       			comment.upvotes -= 1;
     		});
