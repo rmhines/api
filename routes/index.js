@@ -96,7 +96,7 @@ router.param('comment', function(req, res, next, id) {
 
 // GET route for returning a single spot
 router.get('/spots/:spot', function(req, res) {
-  	// Use populate function to retreive comments along with spots
+  	// Use populate function to retrieve comments along with spots
   	req.spot.populate('comments', function(err, spot) {
     	if (err) {
     		return next(err);

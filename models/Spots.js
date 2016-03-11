@@ -7,7 +7,9 @@ var SpotSchema = new mongoose.Schema({
   	name: String, // The name of the bar or restaurant
     address: String, // The full address, if available
     tags: [String], // i.e. "American", "Cocktails", "Sushi" etc.
+    times: String,
     website: String, // The URL for the venue's website, if available
+    description: String, // Brief description of the restaurant and their specialties
     metrics: {
         visited: {type: Number, default: 0}, // The tally of users who have tried this spot
         avgStars: Number, // The 1-5 average quality rating based on user feedback

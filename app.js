@@ -13,7 +13,8 @@ require('./models/Comments');
 require('./models/Users');
 require('./config/passport');
 
-mongoose.connect('mongodb://mean:meanpw@ds047075.mongolab.com:47075/heroku_ljv9kd01');
+//mongoose.connect('mongodb://mean:meanpw@ds047075.mongolab.com:47075/heroku_ljv9kd01');
+mongoose.connect('mongodb://mobile:mobile1234@ds011389.mlab.com:11389/heroku_5tspw2tm');
 
 var routes = require('./routes/index');
 var users = require('./routes/users');
