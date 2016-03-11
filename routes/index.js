@@ -13,7 +13,7 @@ var User = mongoose.model('User');
 
 // GET route for home page
 router.get('/', function(req, res, next) {
-  res.json({ message: 'Welcome to the HappyHourScour (working title!) API.' });
+  res.json({ message: 'Welcome to the HappyScour (working title!) API.' });
 });
 
 // GET route for spots
