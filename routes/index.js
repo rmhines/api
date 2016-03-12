@@ -223,6 +223,41 @@ router.post('/login', function(req, res, next) {
   	})(req, res, next);
 });
 
+// (test) GET route to restricted account info (GET http://localhost:8080/userinfo)
+router.get('/userinfo', passport.authenticate('jwt', { session: false}), function(req, res) {
+	var token = getToken(req.headers);
+	if (token) {
+		var decoded = jwt.decode(token, config.secret);
+		User.findOne({
+			name: decoded.name
+		}, function(err, user) {
+			if (err) throw err;
+
+			if (!user) {
+				return res.status(403).send({success: false, msg: 'Authentication failed. User not found.'});
+			} else {
+				res.json({success: true, msg: 'Welcome in the member area ' + user.name + '!'});
+			}
+		});
+	} else {
+		return res.status(403).send({success: false, msg: 'No token provided.'});
+	}
+});
+
+// Function which extracts token from headers
+getToken = function (headers) {
+	if (headers && headers.authorization) {
+		var parted = headers.authorization.split(' ');
+		if (parted.length === 2) {
+			return parted[1];
+		} else {
+			return null;
+		}
+	} else {
+		return null;
+	}
+};
+
 // Use Express's param() function to automatically load object
 router.param('spot', function(req, res, next, id) {
   	var query = Spot.findById(id);
